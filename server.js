@@ -35,7 +35,7 @@ app.use(morgan('combined'));
 
 // Middleware
 const allowedOrigins = [
-  'http://localhost:3000',
+  'https://dev-collab-app-brown.vercel.app/',
   'https://devcollab-api-yuhm.onrender.com',
 ];
 const corsOptions = {
