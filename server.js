@@ -15,7 +15,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socketio(server, {
     cors:{
-        origin: 'http://localhost:3000',
+        origin: ['http://localhost:3000', 'https://dev-collab-app-brown.vercel.app'],
         methods: ['GET', 'POST', "PUT", "DELETE", "PATCH"],
         credentials: true
     }
@@ -35,7 +35,8 @@ app.use(morgan('combined'));
 
 // Middleware
 const allowedOrigins = [
-  'https://dev-collab-app-brown.vercel.app/',
+  'http://localhost:3000',
+  'https://dev-collab-app-brown.vercel.app',
   'https://devcollab-api-yuhm.onrender.com',
 ];
 const corsOptions = {
