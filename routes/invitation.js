@@ -19,8 +19,8 @@ router.post('/project/:projectId/invite', auth, async (req, res) => {
       return res.status(404).json({ error: 'Project not found' });
     }
     
-    const isAdmin = project.owner.toString() === req.userId || 
-                    project.members.some(m => m.user.toString() === req.userId && m.role === 'admin');
+    const isAdmin = project.owner?.toString() === req.userId || 
+                    project.members.some(m => m.user?.toString() === req.userId && m.role === 'admin');
     
     if (!isAdmin) {
       return res.status(403).json({ error: 'Only admins can invite users' });
@@ -111,6 +111,9 @@ router.get('/verify/:token', async (req, res) => {
     }
 
     const invite = project.inviteTokens.find(t => t.token === token);
+    if (!invite) {
+      return res.status(404).json({ error: 'Invalid or expired invitation' });
+    }
     const inviter = await User.findById(invite.createdBy);
 
     res.json({
@@ -142,15 +145,21 @@ router.post('/accept/:token', auth, async (req, res) => {
     }
     
     const invite = project.inviteTokens.find(t => t.token === token);
-    
+    if (!invite) {
+      return res.status(404).json({ error: 'Invalid or expired invitation' });
+    }
+
     // Check if email matches logged in user
     const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(401).json({ error: 'User not found' });
+    }
     if (user.email !== invite.email) {
       return res.status(403).json({ error: 'This invitation is for a different email address' });
     }
     
     // Check if already a member
-    const alreadyMember = project.members.some(m => m.user.toString() === req.userId);
+    const alreadyMember = project.members.some(m => m.user?.toString() === req.userId);
     if (alreadyMember) {
       return res.status(400).json({ error: 'Already a member of this project' });
     }
