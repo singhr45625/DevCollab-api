@@ -33,6 +33,30 @@ app.use(helmet());
 app.use(compression());
 app.use(morgan('combined'));
 
+// Middleware
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://devcollab-api-yuhm.onrender.com',
+];
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS policy does not allow this origin'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
+};
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+app.use(express.json({ limit: '10mb' }));
+app.use('/uploads', express.static('uploads'));
+
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -42,14 +66,6 @@ const limiter = rateLimit({
   message: 'Too many requests from this IP, please try again later.',
 });
 app.use('/api/', limiter);
-
-// Middleware
-app.use(cors({
-  origin: "http://localhost:3000",
-  credentials: true
-}));
-app.use(express.json({ limit: '10mb' }));
-app.use('/uploads', express.static('uploads'));
 
 // mongo db connection
 mongoose.connect(process.env.MONGO_URI)
