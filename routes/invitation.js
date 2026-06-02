@@ -7,6 +7,71 @@ const Notification = require('../models/Notification');
 const auth = require('../middleware/auth');
 const { sendMail, smtpEnabled } = require('../services/mailerService');
 
+// Test mailing configuration
+router.get('/test-mail', async (req, res) => {
+  try {
+    const { sendMail, smtpEnabled } = require('../services/mailerService');
+    if (!smtpEnabled) {
+      return res.status(400).json({
+        smtpEnabled,
+        error: 'Mailing service is not enabled. Check environment variables.'
+      });
+    }
+
+    // Try verifying SMTP connection if not using Resend
+    if (!process.env.RESEND_API_KEY) {
+      const nodemailer = require('nodemailer');
+      const testTransporter = nodemailer.createTransport({
+        service: process.env.SMTP_SERVICE || undefined,
+        host: process.env.SMTP_HOST,
+        port: Number(process.env.SMTP_PORT) || 587,
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+        connectionTimeout: 5000,
+        greetingTimeout: 5000,
+        socketTimeout: 5000,
+        tls: {
+          rejectUnauthorized: false,
+        },
+      });
+
+      await new Promise((resolve, reject) => {
+        testTransporter.verify((error, success) => {
+          if (error) reject(error);
+          else resolve(success);
+        });
+      });
+    }
+
+    // Attempt to send a test email to the configured sender or a test recipient
+    const recipient = req.query.email || process.env.SMTP_USER || 'kpuja0969@gmail.com';
+    const result = await sendMail({
+      to: recipient,
+      subject: 'DevCollab SMTP Test',
+      text: 'Mailing configuration is working!',
+      html: '<b>Mailing configuration is working!</b>'
+    });
+
+    res.json({
+      success: true,
+      smtpEnabled,
+      usingResend: Boolean(process.env.RESEND_API_KEY),
+      result
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      smtpEnabled: Boolean(process.env.RESEND_API_KEY || process.env.SMTP_HOST),
+      usingResend: Boolean(process.env.RESEND_API_KEY),
+      error: error.message || error,
+      stack: error.stack
+    });
+  }
+});
+
 // Generate invite link for a project
 router.post('/project/:projectId/invite', auth, async (req, res) => {
   try {
