@@ -54,6 +54,8 @@ router.post('/project/:projectId/invite', auth, async (req, res) => {
     let emailSent = false;
     let emailError = null;
 
+    console.log(`Invite request: user=${req.userId} project=${projectId} email=${email} smtpEnabled=${smtpEnabled}`);
+
     if (smtpEnabled) {
       try {
         await sendMail({

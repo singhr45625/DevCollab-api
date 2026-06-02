@@ -10,13 +10,26 @@ const smtpEnabled = Boolean(
 let transporter = null;
 if (smtpEnabled) {
   transporter = nodemailer.createTransport({
+    service: process.env.SMTP_SERVICE || undefined,
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT) || 587,
     secure: process.env.SMTP_SECURE === 'true',
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
+      method: 'LOGIN'
     },
+    tls: {
+      rejectUnauthorized: false,
+    },
+  });
+
+  transporter.verify((error, success) => {
+    if (error) {
+      console.error('SMTP transporter verification failed:', error);
+    } else {
+      console.log('SMTP transporter is ready to send messages');
+    }
   });
 }
 
@@ -26,6 +39,13 @@ async function sendMail({ to, subject, text, html }) {
   }
 
   const from = process.env.EMAIL_FROM || process.env.SMTP_USER;
+  try {
+    await transporter.verify();
+  } catch (verifyError) {
+    console.error('SMTP transporter verify failed before send:', verifyError);
+    throw new Error(`SMTP verification failed: ${verifyError.message || verifyError}`);
+  }
+
   return transporter.sendMail({
     from,
     to,
