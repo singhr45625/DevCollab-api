@@ -66,15 +66,17 @@ router.post('/project/:projectId/invite', auth, async (req, res) => {
           `,
     };
 
+    let emailError = null;
+
     if (smtpEnabled) {
-      emailQueued = true;
-      sendMail(mailOptions)
-        .then(() => {
-          console.log(`✓ Invite email queued and sent to ${email}`);
-        })
-        .catch((err) => {
-          console.error(`✗ Failed to send invite email to ${email}:`, err.message || err);
-        });
+      try {
+        await sendMail(mailOptions);
+        emailQueued = true;
+        console.log(`✓ Invite email sent to ${email}`);
+      } catch (err) {
+        emailError = err.message || err;
+        console.error(`✗ Failed to send invite email to ${email}:`, emailError);
+      }
     } else {
       console.warn('⚠ SMTP is not configured. Invitation created but email NOT sent.');
     }
@@ -106,12 +108,15 @@ router.post('/project/:projectId/invite', auth, async (req, res) => {
     
     res.json({ 
       message: smtpEnabled
-        ? 'Invitation created. Email delivery has been queued.'
+        ? (emailQueued
+            ? 'Invitation created. Email has been sent successfully.'
+            : `Invitation created, but failed to send email: ${emailError}`)
         : 'Invitation created. SMTP is not configured, so email was not sent.',
       inviteUrl,
       token,
       emailQueued,
-      smtpEnabled
+      smtpEnabled,
+      emailError
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
