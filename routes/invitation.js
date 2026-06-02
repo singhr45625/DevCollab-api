@@ -56,25 +56,27 @@ router.post('/project/:projectId/invite', auth, async (req, res) => {
 
     console.log(`Invite request: user=${req.userId} project=${projectId} email=${email} smtpEnabled=${smtpEnabled}`);
 
-    if (smtpEnabled) {
-      try {
-        await sendMail({
-          to: email,
-          subject: `Invitation to join ${project.name}`,
-          text: `You have been invited to join the project \"${project.name}\". Accept your invitation here: ${inviteUrl}`,
-          html: `
+    const mailOptions = {
+      to: email,
+      subject: `Invitation to join ${project.name}`,
+      text: `You have been invited to join the project \"${project.name}\". Accept your invitation here: ${inviteUrl}`,
+      html: `
             <p>You have been invited to join the project <strong>${project.name}</strong>.</p>
             <p><a href="${inviteUrl}">Click here to accept the invitation</a></p>
             <p>This link expires in 7 days.</p>
           `,
-        });
+    };
 
-        emailSent = true;
-        console.log(`Invite email sent to ${email}: ${inviteUrl}`);
-      } catch (err) {
-        emailError = err.message || 'Unknown error sending email';
-        console.error('Failed to send invite email:', err);
-      }
+    if (smtpEnabled) {
+      emailSent = true;
+      sendMail(mailOptions)
+        .then(() => {
+          console.log(`Invite email sent to ${email}: ${inviteUrl}`);
+        })
+        .catch((err) => {
+          emailError = err.message || 'Unknown error sending email';
+          console.error('Failed to send invite email:', err);
+        });
     } else {
       console.warn('SMTP is not configured. Invitation will still be created and invite URL returned.');
     }

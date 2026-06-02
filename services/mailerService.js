@@ -19,6 +19,9 @@ if (smtpEnabled) {
       pass: process.env.SMTP_PASS,
       method: 'LOGIN'
     },
+    pool: true,
+    maxConnections: 1,
+    maxMessages: 100,
     tls: {
       rejectUnauthorized: false,
     },
@@ -39,13 +42,6 @@ async function sendMail({ to, subject, text, html }) {
   }
 
   const from = process.env.EMAIL_FROM || process.env.SMTP_USER;
-  try {
-    await transporter.verify();
-  } catch (verifyError) {
-    console.error('SMTP transporter verify failed before send:', verifyError);
-    throw new Error(`SMTP verification failed: ${verifyError.message || verifyError}`);
-  }
-
   return transporter.sendMail({
     from,
     to,
