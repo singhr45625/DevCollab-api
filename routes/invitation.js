@@ -81,8 +81,9 @@ router.post('/project/:projectId/invite', auth, async (req, res) => {
 
     // If user already exists, send real-time notification (non-blocking)
     if (existingUser) {
-      const notification = new Notification({
-        user: existingUser._id,
+      const NotificationService = require('../services/notificationService');
+      const notificationService = new NotificationService(req.app.get('io'));
+      notificationService.createNotification(existingUser._id, {
         type: 'project_invite',
         title: 'Project Invitation',
         message: `You've been invited to join project: ${project.name}`,
@@ -92,16 +93,9 @@ router.post('/project/:projectId/invite', auth, async (req, res) => {
           inviteToken: token,
           actionUrl: `/invite/${token}`
         }
+      }).catch((err) => {
+        console.error('Failed to save notification:', err);
       });
-      
-      notification.save()
-        .then(() => {
-          const io = req.app.get('io');
-          io.to(`user-${existingUser._id}`).emit('new-notification', { notification });
-        })
-        .catch((err) => {
-          console.error('Failed to save notification:', err);
-        });
     }
     
     res.json({ 
@@ -207,8 +201,9 @@ router.post('/accept/:token', auth, async (req, res) => {
     });
     
     // Notify project owner
-    const notification = new Notification({
-      user: project.owner,
+    const NotificationService = require('../services/notificationService');
+    const notificationService = new NotificationService(req.app.get('io'));
+    await notificationService.createNotification(project.owner, {
       type: 'project_invite',
       title: 'New Team Member',
       message: `${user.name} joined ${project.name}`,
@@ -216,10 +211,8 @@ router.post('/accept/:token', auth, async (req, res) => {
         projectId: project._id
       }
     });
-    await notification.save();
     
     const io = req.app.get('io');
-    io.to(`user-${project.owner}`).emit('new-notification', { notification });
     io.to(`project-${project._id}`).emit('member-joined', { user, role: invite.role });
     
     res.json({ 

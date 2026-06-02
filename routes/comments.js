@@ -39,9 +39,11 @@ router.post('/', auth, async (req, res) => {
     
     // Create notification for task assignee
     if (task.assignedTo && task.assignedTo._id.toString() !== req.userId) {
-      const notification = new Notification({
-        user: task.assignedTo._id,
+      const NotificationService = require('../services/notificationService');
+      const notificationService = new NotificationService(req.app.get('io'));
+      await notificationService.createNotification(task.assignedTo._id, {
         type: 'comment_added',
+        title: 'New Comment',
         message: `New comment on task: ${task.title}`,
         metadata: {
           taskId: task._id,
@@ -49,11 +51,6 @@ router.post('/', auth, async (req, res) => {
           commentId: comment._id,
         },
       });
-      await notification.save();
-      
-      // Emit real-time notification
-      const io = req.app.get('io');
-      io.to(`user-${task.assignedTo._id}`).emit('new-notification', notification);
     }
     
     res.status(201).json(comment);

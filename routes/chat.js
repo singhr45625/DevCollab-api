@@ -49,10 +49,10 @@ router.post('/', auth, async (req, res) => {
     
     // Create notifications for mentioned users
     if (mentions.length > 0) {
-      const Notification = require('../models/Notification');
+      const NotificationService = require('../services/notificationService');
+      const notificationService = new NotificationService(req.app.get('io'));
       for (const userId of mentions) {
-        const notification = new Notification({
-          user: userId,
+        await notificationService.createNotification(userId, {
           type: 'mention',
           title: 'You were mentioned',
           message: `${message.sender.name} mentioned you in project chat`,
@@ -61,8 +61,6 @@ router.post('/', auth, async (req, res) => {
             messageId: message._id
           }
         });
-        await notification.save();
-        io.to(`user-${userId}`).emit('new-notification', { notification });
       }
     }
     
