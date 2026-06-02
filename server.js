@@ -36,12 +36,14 @@ app.use(morgan('combined'));
 // Middleware
 const allowedOrigins = [
   'http://localhost:3000',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
   'https://dev-collab-app-brown.vercel.app',
   'https://devcollab-api-yuhm.onrender.com',
 ];
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin || allowedOrigins.includes(origin) || origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) {
       callback(null, true);
     } else {
       callback(new Error('CORS policy does not allow this origin'));
