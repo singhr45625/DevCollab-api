@@ -44,29 +44,39 @@ router.post('/project/:projectId/invite', auth, async (req, res) => {
     
     await project.save();
     
-    // Build the invitation URL using env fallback or request origin
-    const frontendBase = process.env.FRONTEND_URL || req.headers.origin || 'http://localhost:3000';
-    const inviteUrl = `${frontendBase.replace(/\/$/, '')}/invite/${token}`;
+    // Build the invitation URL using the configured frontend URL or request origin.
+    // In production, set FRONTEND_URL to your Vercel app so email links never point to localhost.
+    const frontendEnvUrl = process.env.FRONTEND_URL?.trim();
+    const frontendBase = (frontendEnvUrl && frontendEnvUrl !== 'http://localhost:3000'
+      ? frontendEnvUrl
+      : req.headers.origin || 'http://localhost:3000').replace(/\/$/, '');
+    const inviteUrl = `${frontendBase}/invite/${token}`;
+    let emailSent = false;
+    let emailError = null;
 
-    if (!smtpEnabled) {
-      return res.status(500).json({
-        error: 'SMTP is not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS in .env.'
-      });
+    if (smtpEnabled) {
+      try {
+        await sendMail({
+          to: email,
+          subject: `Invitation to join ${project.name}`,
+          text: `You have been invited to join the project \"${project.name}\". Accept your invitation here: ${inviteUrl}`,
+          html: `
+            <p>You have been invited to join the project <strong>${project.name}</strong>.</p>
+            <p><a href="${inviteUrl}">Click here to accept the invitation</a></p>
+            <p>This link expires in 7 days.</p>
+          `,
+        });
+
+        emailSent = true;
+        console.log(`Invite email sent to ${email}: ${inviteUrl}`);
+      } catch (err) {
+        emailError = err.message || 'Unknown error sending email';
+        console.error('Failed to send invite email:', err);
+      }
+    } else {
+      console.warn('SMTP is not configured. Invitation will still be created and invite URL returned.');
     }
 
-    await sendMail({
-      to: email,
-      subject: `Invitation to join ${project.name}`,
-      text: `You have been invited to join the project \"${project.name}\". Accept your invitation here: ${inviteUrl}`,
-      html: `
-        <p>You have been invited to join the project <strong>${project.name}</strong>.</p>
-        <p><a href="${inviteUrl}">Click here to accept the invitation</a></p>
-        <p>This link expires in 7 days.</p>
-      `,
-    });
-
-    console.log(`Invite email sent to ${email}: ${inviteUrl}`);
-    
     // If user already exists, send real-time notification
     if (existingUser) {
       const notification = new Notification({
@@ -88,9 +98,11 @@ router.post('/project/:projectId/invite', auth, async (req, res) => {
     }
     
     res.json({ 
-      message: 'Invitation sent successfully',
+      message: emailSent ? 'Invitation sent successfully' : 'Invitation created. Email sending is disabled or failed.',
       inviteUrl,
-      token
+      token,
+      emailSent,
+      emailError
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
