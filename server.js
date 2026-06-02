@@ -97,7 +97,8 @@ io.on('connection', (socket) => {
 
     socket.on('joinProject', (projectId) => {
         socket.join(projectId);
-        console.log(`Client ${socket.id} joined project ${projectId}`);
+        socket.join(`project-${projectId}`);
+        console.log(`Client ${socket.id} joined project ${projectId} and project-${projectId}`);
     });
 
     socket.on('join-user', (userId) => {
