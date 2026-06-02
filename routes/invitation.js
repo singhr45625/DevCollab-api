@@ -52,7 +52,6 @@ router.post('/project/:projectId/invite', auth, async (req, res) => {
       : req.headers.origin || 'http://localhost:3000').replace(/\/$/, '');
     const inviteUrl = `${frontendBase}/invite/${token}`;
     let emailSent = false;
-    let emailError = null;
 
     console.log(`Invite request: user=${req.userId} project=${projectId} email=${email} smtpEnabled=${smtpEnabled}`);
 
@@ -74,7 +73,6 @@ router.post('/project/:projectId/invite', auth, async (req, res) => {
           console.log(`Invite email sent to ${email}: ${inviteUrl}`);
         })
         .catch((err) => {
-          emailError = err.message || 'Unknown error sending email';
           console.error('Failed to send invite email:', err);
         });
     } else {
@@ -102,11 +100,10 @@ router.post('/project/:projectId/invite', auth, async (req, res) => {
     }
     
     res.json({ 
-      message: emailSent ? 'Invitation sent successfully' : 'Invitation created. Email sending is disabled or failed.',
+      message: smtpEnabled ? 'Invitation created. Email delivery has been queued.' : 'Invitation created. SMTP is not configured, so email was not sent.',
       inviteUrl,
       token,
-      emailSent,
-      emailError
+      emailQueued: smtpEnabled
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
