@@ -18,8 +18,8 @@ router.get('/test-mail', async (req, res) => {
       });
     }
 
-    // Try verifying SMTP connection if not using Resend
-    if (!process.env.RESEND_API_KEY) {
+    // Try verifying SMTP connection if not using Resend or Brevo HTTP APIs
+    if (!process.env.RESEND_API_KEY && !process.env.BREVO_API_KEY) {
       const nodemailer = require('nodemailer');
       const testTransporter = nodemailer.createTransport({
         service: process.env.SMTP_SERVICE || undefined,
@@ -59,13 +59,15 @@ router.get('/test-mail', async (req, res) => {
       success: true,
       smtpEnabled,
       usingResend: Boolean(process.env.RESEND_API_KEY),
+      usingBrevo: Boolean(process.env.BREVO_API_KEY),
       result
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      smtpEnabled: Boolean(process.env.RESEND_API_KEY || process.env.SMTP_HOST),
+      smtpEnabled: Boolean(process.env.BREVO_API_KEY || process.env.RESEND_API_KEY || process.env.SMTP_HOST),
       usingResend: Boolean(process.env.RESEND_API_KEY),
+      usingBrevo: Boolean(process.env.BREVO_API_KEY),
       error: error.message || error,
       stack: error.stack
     });
