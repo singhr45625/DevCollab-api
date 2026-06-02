@@ -79,7 +79,7 @@ router.post('/project/:projectId/invite', auth, async (req, res) => {
       console.warn('SMTP is not configured. Invitation will still be created and invite URL returned.');
     }
 
-    // If user already exists, send real-time notification
+    // If user already exists, send real-time notification (non-blocking)
     if (existingUser) {
       const notification = new Notification({
         user: existingUser._id,
@@ -93,10 +93,15 @@ router.post('/project/:projectId/invite', auth, async (req, res) => {
           actionUrl: `/invite/${token}`
         }
       });
-      await notification.save();
       
-      const io = req.app.get('io');
-      io.to(`user-${existingUser._id}`).emit('new-notification', { notification });
+      notification.save()
+        .then(() => {
+          const io = req.app.get('io');
+          io.to(`user-${existingUser._id}`).emit('new-notification', { notification });
+        })
+        .catch((err) => {
+          console.error('Failed to save notification:', err);
+        });
     }
     
     res.json({ 
