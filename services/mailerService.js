@@ -1,14 +1,16 @@
 const nodemailer = require('nodemailer');
 
 const smtpEnabled = Boolean(
-  process.env.SMTP_HOST &&
-  process.env.SMTP_PORT &&
-  process.env.SMTP_USER &&
-  process.env.SMTP_PASS
+  process.env.RESEND_API_KEY || (
+    process.env.SMTP_HOST &&
+    process.env.SMTP_PORT &&
+    process.env.SMTP_USER &&
+    process.env.SMTP_PASS
+  )
 );
 
 let transporter = null;
-if (smtpEnabled) {
+if (!process.env.RESEND_API_KEY && smtpEnabled) {
   transporter = nodemailer.createTransport({
     service: process.env.SMTP_SERVICE || undefined,
     host: process.env.SMTP_HOST,
@@ -29,12 +31,6 @@ if (smtpEnabled) {
   transporter.verify((error, success) => {
     if (error) {
       console.error('SMTP transporter verification failed:', error.message || error);
-      console.error('SMTP Config:', {
-        host: process.env.SMTP_HOST,
-        port: process.env.SMTP_PORT,
-        secure: process.env.SMTP_SECURE,
-        user: process.env.SMTP_USER
-      });
     } else {
       console.log('✓ SMTP transporter is ready to send messages');
     }
@@ -42,10 +38,44 @@ if (smtpEnabled) {
 }
 
 async function sendMail({ to, subject, text, html }) {
-  if (!smtpEnabled || !transporter) {
-    throw new Error('SMTP is not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS in .env.');
+  if (!smtpEnabled) {
+    throw new Error('Mailing service is not configured. Set RESEND_API_KEY or SMTP variables in .env.');
   }
 
+  // Use Resend HTTP API if API Key is configured (Safe for Render, bypasses SMTP blocks)
+  if (process.env.RESEND_API_KEY) {
+    const from = process.env.EMAIL_FROM || 'onboarding@resend.dev';
+    try {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from,
+          to: [to],
+          subject,
+          text,
+          html
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Resend API error');
+      }
+      console.log(`✓ Email sent successfully via Resend. MessageId: ${data.id}`);
+      return { messageId: data.id };
+    } catch (err) {
+      console.error(`✗ Email send failed via Resend for ${to}:`, err.message || err);
+      throw err;
+    }
+  }
+
+  // Fallback to Nodemailer SMTP (Works for local development)
+  if (!transporter) {
+    throw new Error('SMTP transporter is not initialized.');
+  }
   const from = process.env.EMAIL_FROM || process.env.SMTP_USER;
   try {
     const result = await transporter.sendMail({
@@ -55,15 +85,10 @@ async function sendMail({ to, subject, text, html }) {
       text,
       html,
     });
-    console.log(`✓ Email sent successfully. MessageId: ${result.messageId}`);
+    console.log(`✓ Email sent successfully via SMTP. MessageId: ${result.messageId}`);
     return result;
   } catch (err) {
-    console.error(`✗ Email send failed for ${to}:`, err.message || err);
-    console.error('Error details:', {
-      code: err.code,
-      responseCode: err.responseCode,
-      command: err.command
-    });
+    console.error(`✗ Email send failed via SMTP for ${to}:`, err.message || err);
     throw err;
   }
 }
