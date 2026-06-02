@@ -241,26 +241,41 @@ router.get('/project/:projectId/members', auth, async (req, res) => {
       .populate('members.user', 'name email avatar')
       .populate('owner', 'name email avatar');
     
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+    
     // Check access
-    const hasAccess = project.owner.toString() === req.userId ||
-                      project.members.some(m => m.user._id.toString() === req.userId);
+    const hasAccess = project.owner._id.toString() === req.userId ||
+                      project.members.some(m => m.user && m.user._id.toString() === req.userId);
     
     if (!hasAccess) {
       return res.status(403).json({ error: 'Access denied' });
     }
     
-    const members = project.members.map(m => ({
-      ...m.user.toObject(),
-      role: m.role,
-      joinedAt: m.joinedAt
-    }));
+    const members = project.members
+      .filter(m => m.user) // Only include members with valid user data
+      .map(m => ({
+        _id: m.user._id,
+        name: m.user.name,
+        email: m.user.email,
+        avatar: m.user.avatar,
+        role: m.role,
+        joinedAt: m.joinedAt
+      }));
     
     res.json({
-      owner: project.owner,
+      owner: {
+        _id: project.owner._id,
+        name: project.owner.name,
+        email: project.owner.email,
+        avatar: project.owner.avatar
+      },
       members,
       totalMembers: members.length + 1
     });
   } catch (error) {
+    console.error('Failed to fetch project members:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
