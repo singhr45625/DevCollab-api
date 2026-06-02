@@ -284,16 +284,19 @@ router.get('/project/:projectId/members', auth, async (req, res) => {
 router.delete('/project/:projectId/members/:userId', auth, async (req, res) => {
   try {
     const project = await Project.findById(req.params.projectId);
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
     
     // Check if requester is owner or admin
-    const isOwner = project.owner.toString() === req.userId;
-    const isAdmin = project.members.some(m => m.user.toString() === req.userId && m.role === 'admin');
+    const isOwner = project.owner?.toString() === req.userId;
+    const isAdmin = project.members.some(m => m.user?.toString() === req.userId && m.role === 'admin');
     
     if (!isOwner && !isAdmin) {
       return res.status(403).json({ error: 'Only owners/admins can remove members' });
     }
     
-    project.members = project.members.filter(m => m.user.toString() !== req.params.userId);
+    project.members = project.members.filter(m => m.user?.toString() !== req.params.userId);
     await project.save();
     
     const io = req.app.get('io');
@@ -309,13 +312,16 @@ router.delete('/project/:projectId/members/:userId', auth, async (req, res) => {
 router.post('/project/:projectId/leave', auth, async (req, res) => {
   try {
     const project = await Project.findById(req.params.projectId);
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
     
     // Check if owner cannot leave (must transfer ownership first)
-    if (project.owner.toString() === req.userId) {
+    if (project.owner?.toString() === req.userId) {
       return res.status(400).json({ error: 'Project owner cannot leave. Transfer ownership first or delete project.' });
     }
     
-    project.members = project.members.filter(m => m.user.toString() !== req.userId);
+    project.members = project.members.filter(m => m.user?.toString() !== req.userId);
     await project.save();
     
     const io = req.app.get('io');
@@ -331,14 +337,17 @@ router.post('/project/:projectId/leave', auth, async (req, res) => {
 router.post('/project/:projectId/transfer/:newOwnerId', auth, async (req, res) => {
   try {
     const project = await Project.findById(req.params.projectId);
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
     
     // Only current owner can transfer
-    if (project.owner.toString() !== req.userId) {
+    if (project.owner?.toString() !== req.userId) {
       return res.status(403).json({ error: 'Only project owner can transfer ownership' });
     }
     
     // Check if new owner is a member
-    const isMember = project.members.some(m => m.user.toString() === req.params.newOwnerId);
+    const isMember = project.members.some(m => m.user?.toString() === req.params.newOwnerId);
     if (!isMember) {
       return res.status(400).json({ error: 'New owner must be a project member' });
     }
@@ -347,7 +356,7 @@ router.post('/project/:projectId/transfer/:newOwnerId', auth, async (req, res) =
     project.owner = req.params.newOwnerId;
     
     // Add current owner as admin member if not already
-    const isCurrentOwnerMember = project.members.some(m => m.user.toString() === req.userId);
+    const isCurrentOwnerMember = project.members.some(m => m.user?.toString() === req.userId);
     if (!isCurrentOwnerMember) {
       project.members.push({
         user: req.userId,

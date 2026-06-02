@@ -60,7 +60,7 @@ router.get('/:id', auth, async (req, res) => {
     }
 
     const hasAccess = project.owner._id.toString() === req.userId ||
-      project.members.some(m => m.user._id.toString() === req.userId);
+      project.members.some(m => m.user && m.user._id.toString() === req.userId);
 
     if (!hasAccess) {
       return res.status(403).json({ error: 'You do not have access to this project' });
@@ -68,7 +68,7 @@ router.get('/:id', auth, async (req, res) => {
 
     let userRole = 'owner';
     if (project.owner._id.toString() !== req.userId) {
-      const member = project.members.find(m => m.user._id.toString() === req.userId);
+      const member = project.members.find(m => m.user && m.user._id.toString() === req.userId);
       userRole = member ? member.role : 'none';
     }
 
