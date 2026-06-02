@@ -70,13 +70,13 @@ router.post('/project/:projectId/invite', auth, async (req, res) => {
       emailQueued = true;
       sendMail(mailOptions)
         .then(() => {
-          console.log(`Invite email sent to ${email}: ${inviteUrl}`);
+          console.log(`✓ Invite email queued and sent to ${email}`);
         })
         .catch((err) => {
-          console.error('Failed to send invite email:', err);
+          console.error(`✗ Failed to send invite email to ${email}:`, err.message || err);
         });
     } else {
-      console.warn('SMTP is not configured. Invitation will still be created and invite URL returned.');
+      console.warn('⚠ SMTP is not configured. Invitation created but email NOT sent.');
     }
 
     // If user already exists, send real-time notification (non-blocking)

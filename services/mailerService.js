@@ -29,9 +29,15 @@ if (smtpEnabled) {
 
   transporter.verify((error, success) => {
     if (error) {
-      console.error('SMTP transporter verification failed:', error);
+      console.error('SMTP transporter verification failed:', error.message || error);
+      console.error('SMTP Config:', {
+        host: process.env.SMTP_HOST,
+        port: process.env.SMTP_PORT,
+        secure: process.env.SMTP_SECURE,
+        user: process.env.SMTP_USER
+      });
     } else {
-      console.log('SMTP transporter is ready to send messages');
+      console.log('✓ SMTP transporter is ready to send messages');
     }
   });
 }
@@ -42,13 +48,25 @@ async function sendMail({ to, subject, text, html }) {
   }
 
   const from = process.env.EMAIL_FROM || process.env.SMTP_USER;
-  return transporter.sendMail({
-    from,
-    to,
-    subject,
-    text,
-    html,
-  });
+  try {
+    const result = await transporter.sendMail({
+      from,
+      to,
+      subject,
+      text,
+      html,
+    });
+    console.log(`✓ Email sent successfully. MessageId: ${result.messageId}`);
+    return result;
+  } catch (err) {
+    console.error(`✗ Email send failed for ${to}:`, err.message || err);
+    console.error('Error details:', {
+      code: err.code,
+      responseCode: err.responseCode,
+      command: err.command
+    });
+    throw err;
+  }
 }
 
 module.exports = {
