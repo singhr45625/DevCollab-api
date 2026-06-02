@@ -44,7 +44,7 @@ async function sendMail({ to, subject, text, html }) {
 
   // Use Resend HTTP API if API Key is configured (Safe for Render, bypasses SMTP blocks)
   if (process.env.RESEND_API_KEY) {
-    const from = process.env.EMAIL_FROM || 'onboarding@resend.dev';
+    const from = process.env.RESEND_FROM || 'onboarding@resend.dev';
     try {
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
