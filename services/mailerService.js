@@ -17,11 +17,10 @@ if (smtpEnabled) {
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
-      method: 'LOGIN'
     },
-    pool: true,
-    maxConnections: 1,
-    maxMessages: 100,
+    connectionTimeout: 8000, // 8 seconds timeout
+    greetingTimeout: 8000,
+    socketTimeout: 8000,
     tls: {
       rejectUnauthorized: false,
     },
